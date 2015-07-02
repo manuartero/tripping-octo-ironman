@@ -28,3 +28,9 @@ node_modules
 
 # type script dist folder
 dist/
+
+# Ide's folders
+.settings/
+
+# dev personal folder
+dev/
