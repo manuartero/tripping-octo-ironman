@@ -1,0 +1,13 @@
+{
+  "name": "tripping-octo-ironman",
+  "version": "v0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manutero/tripping-octo-ironman.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.12",
+    "typescript": "^1.5.0-beta"
+  }
+}
