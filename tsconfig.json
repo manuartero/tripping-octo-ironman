@@ -1,5 +1,4 @@
 {
-    "version": "1.5.0-alpha",
     "compilerOptions": {
         "emitDecoratorMetadata": true,
         "module": "commonjs",
