@@ -29,6 +29,9 @@ node_modules
 # type script dist folder
 dist/
 
+# node_modules equivalent for tsd
+typings/
+ 
 # Ide's folders
 .settings/
 
