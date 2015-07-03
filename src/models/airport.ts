@@ -1,6 +1,11 @@
+/*
+ * Exports the AirportInterface and the AirportModel
+ */
+
+
 import mongoose = require("mongoose");
 
-interface AirportInterface extends mongoose.Document {
+export interface AirportInterface extends mongoose.Document {
     key:  string;
     name: string;
     lat:  number;
@@ -15,10 +20,13 @@ var airportSchema = new mongoose.Schema({
     lon:  {type:Number}
 });
 
+airportSchema.method("toString()", function(){
+    return JSON.stringify(this);
+});
+
 airportSchema.method("connections", function() {
     // TODO
     return [];
 });
 
-
-export var Airport = mongoose.model<AirportInterface>("Airport", airportSchema);
+export var AirportModel = mongoose.model<AirportInterface>("Airport", airportSchema);
