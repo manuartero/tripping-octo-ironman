@@ -1,8 +1,7 @@
 ///<reference path="../../../typings/tsd.d.ts"/>
-
-var http = require('http'),
-    https = require('https'),
-    url = require('url');
+import http = require('http')
+import https = require('https')
+import url = require('url')
 
 
 interface HttpOptionsObject {
