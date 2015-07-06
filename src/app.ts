@@ -5,9 +5,8 @@ import bodyParser = require('body-parser');
 
 
 /* airport resource */
-import airportControllerModule = require('./controllers/airport_controller');
-import airportRouter = airportControllerModule.router;
-
+import AirportController = require('./controllers/airport_controller');
+import ConnectionController = require('./controllers/connection_controller');
 
 /* DB */
 mongoose.connect('mongodb://localhost/tripping-octo-ironman');
@@ -36,7 +35,8 @@ var app = express();
 app.use(bodyParser.urlencoded( {extended: false} ));
 app.use(bodyParser.json());
 app.use(logRequestMiddleware);
-app.use('/airport', airportRouter);
+app.use('/airport', AirportController.router);
+app.use('/connect', ConnectionController.router);
 app.use(logResponseMiddleware);
 app.use(errorMiddleware);
 
