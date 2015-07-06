@@ -8,15 +8,25 @@
  */
 
 ///<reference path="../../typings/tsd.d.ts"/>
-import express = require("express");
-import mongoose = require("mongoose");
+import express = require('express');
+import mongoose = require('mongoose');
 
-import airportModule = require("../models/airport");
+import airportModule = require('../models/airport');
 import AirportProperties = airportModule.AirportProperties;
 import AirportInterface = airportModule.AirportInterface;
 import Airport = airportModule.AirportModel;
 
+
+var logDataMiddleware = function(request: express.Request, response: express.Response, next: Function) {
+    if (request.body.length !== 0) {
+        var data = _getData(request);
+        console.log("  Airport Controller\n  Data: " + JSON.stringify(data));
+    }
+    next();
+}
+
 export var router = express.Router();
+router.use(logDataMiddleware);
 router.get('/:key', findByKey);
 router.post('/', create);
 router.patch('/:key', update);
@@ -27,68 +37,106 @@ router.delete('/:key', destroy);
 /**
  * POST /airport
  */
-function create(request: express.Request, response: express.Response) {
+function create(request: express.Request, response: express.Response, next: Function) {
     var data = _getData(request);
     var onCreate = function(error: any, obj: AirportInterface) {
-        error ? response.sendStatus(400) : response.send("Airport created: " + obj.toString());
+        if (error) {
+            console.error("WARN [Creating] -> %s", error.toString());
+            response.status(400).send(error.toString());
+        } else {
+            response.send("Airport created: " + obj.toString());
+            next();
+        }
     };
     Airport.create(data, onCreate);
 }
 
+
 /**
  * GET /airport/{key}
  */
-function findByKey(request: express.Request, response: express.Response) {
+function findByKey(request: express.Request, response: express.Response, next: Function) {
     var query = { key: request.params.key };
     var onFind = function(error: any, obj: AirportInterface) {
-        error ? response.sendStatus(400) : response.json(obj);
+        if (error) {
+            console.error("WARN [Searching %s] -> %s", query, error.toString());
+            response.status(400).send(error.toString());
+        } else { 
+            response.json(obj);
+            next();
+        }
     }
     Airport.findOne(query, onFind);
 }
+
 
 /**
  * PATCH /airport/{key}
  */
-function update(request: express.Request, response: express.Response) {
+function update(request: express.Request, response: express.Response, next: Function) {
     var data = _getData(request);
-    console.log("DATA: " + JSON.stringify(data));
     data.key = request.params.key;
     var query = { key: data.key };
     var onFind = function(error: any, obj: AirportInterface) {
-        error ? response.sendStatus(400) : _update(query, obj, response); // FIXME obj
+        if (error) {
+            response.status(400).send(error.toString());
+        } else {
+            obj.mergeProperties(data);
+            obj.save(function(err: any, res: AirportInterface) { _onSave(err, res, response, next); });
+        }
     }
     Airport.findOne(query, onFind);
 }
 
-function _update(query: Object, obj: AirportInterface, response: express.Response) {
-    var onUpdate = function(error: any, raw: any) {
-        error ? response.sendStatus(400) : response.send("Updated: " + obj.toString());
-    };
-    Airport.update(query, obj, onUpdate);
-}
+
 
 /**
  * PUT /airport/{key}
  */
-function overwrite(request: express.Request, response: express.Response) {
+function overwrite(request: express.Request, response: express.Response, next: Function) {
     var data = _getData(request);
     data.key = request.params.key;
     var query = { key: data.key };
-    console.log(JSON.stringify(data));
-    var onUpdate = function(error: any, raw: any) {
-        console.log(error.toString());
-        error ? response.sendStatus(400) : response.send("Updated: " + raw);
+    var onFind = function(error: any, obj: AirportInterface) {
+        if (error) {
+            response.status(400).send(error.toString());
+        } else {
+            obj.overwriteProperties(data);
+            obj.save(function(err: any, res: AirportInterface) { _onSave(err, res, response, next); });
+        }
     };
-    Airport.update(query, data, onUpdate);
+    Airport.findOne(query, onFind);
 }
+
 
 /**
  * DELETE /airport/{key}
  */
-function destroy(request: express.Request, res: express.Response) {
-    // TODO
+function destroy(request: express.Request, response: express.Response, next: Function) {
+    var query = { key: request.params.key };
+    var onRemove = function(error: any, obj: AirportInterface) {
+        if (error) {
+            response.status(400).send(error.toString());
+        } else {
+            response.json(obj);
+            next();
+        }
+    };
+    Airport.findOneAndRemove(query, onRemove);
 }
 
+
+
+/* aux */
+
+function _onSave(error: any, obj: AirportInterface, response: express.Response, next: Function) {
+    if (error) {
+        console.error("WARN [Saving %s] -> %s", obj._id, error.toString());
+    } else {
+        response.send("Saved: " + obj.toString());
+        next();
+    }
+}
 
 function _getData(request: express.Request) : AirportProperties {
    return {

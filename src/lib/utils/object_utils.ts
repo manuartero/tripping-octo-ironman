@@ -18,7 +18,7 @@
  * @param {object} obj2
  * @return {object} A new object based on o1 and override with o2
  */
-export function overwrite(obj1: Object, obj2: Object) {
+export function overwrite(obj1: Object, obj2: Object) : Object {
     var o1 = obj1 || {}, 
         o2 = obj2 || {},
         response = {};
@@ -41,7 +41,7 @@ export function overwrite(obj1: Object, obj2: Object) {
  * @param {object} obj2
  * @return {object} A new object based on o1 and completed - if necessary - with obj2's defaults.
  */
-export function complete(obj1: Object, obj2: Object){
+export function complete(obj1: Object, obj2: Object) : Object {
     var o1 = obj1 || {}, 
         o2 = obj2 || {},
         response = {};

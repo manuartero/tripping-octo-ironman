@@ -1,8 +1,10 @@
 /*
- * Exports the AirportProperties, AirportInterface and AirportModel
+ * Exports the type AirportProperties, the type AirportInterface and the var AirportModel
  */
 
 import mongoose = require("mongoose");
+import mongooseUtils = require('../lib/utils/mongoose_utils');
+
 
 export interface AirportProperties {
     key:  string;
@@ -15,6 +17,8 @@ export interface AirportInterface extends AirportProperties, mongoose.Document {
     created_at: Date;
     updated_at: Date;
     connections(): AirportInterface[];
+    overwriteProperties(other: AirportProperties) : void;
+    mergeProperties(other: AirportProperties) : void;
 }
 
 var airportSchema = new mongoose.Schema({
@@ -26,29 +30,15 @@ var airportSchema = new mongoose.Schema({
     updated_at: {type: Date},
 });
 
-/**
- * created_at & updated_at auto value
- */
-airportSchema.pre('save', function(next) {
-  var now = new Date();
-  this.updated_at = now;
-  if ( !this.created_at ) {
-    this.created_at = now;
-  }
-  next();
-});
-
-/**
- * @override
- */
-airportSchema.method("toString()", function(){
-    return JSON.stringify(this);
-});
-
-airportSchema.method("connections", function() {
-    // TODO
+var connections = function() {
+    // TODO 
     return [];
-});
+}
 
+airportSchema.method('toString', mongooseUtils.toStringOverride);
+airportSchema.method('overwriteProperties', mongooseUtils.overwriteProperties);
+airportSchema.method('mergeProperties', mongooseUtils.mergeProperties);
+airportSchema.method("connections", connections);
+airportSchema.pre('save', mongooseUtils.updateAndCreate);
 
 export var AirportModel = mongoose.model<AirportInterface>("Airport", airportSchema);
