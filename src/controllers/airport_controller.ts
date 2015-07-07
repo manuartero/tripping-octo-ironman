@@ -1,10 +1,11 @@
 /* Exports the airportController
  *
- * CRUD under /airport 
- *  - POST /airport
- *  - GET /airport/{key} 
- *  - PATCH&PUT /airport/{key}
- *  - DELETE /airport/{key}
+ * CRUD under /airport
+ *  - POST               /airport
+ *  - GET                /airport
+ *  - GET                /airport/{key}
+ *  - PATCH & PUT        /airport/{key}
+ *  - DELETE             /airport/{key}
  */
 
 ///<reference path="../../typings/tsd.d.ts"/>
@@ -13,17 +14,10 @@ import mongoose = require('mongoose');
 import Airport = require('../models/airport');
 
 
-var logDataMiddleware = function(request: express.Request, response: express.Response, next: Function) {
-    if (request.body.length !== 0) {
-        var data = _getData(request);
-        console.log("  Airport Controller\n  Data: " + JSON.stringify(data));
-    }
-    next();
-}
-
 export var router = express.Router();
 router.use(logDataMiddleware);
 router.get('/:key', findByKey);
+router.get('/', listAirports);
 router.post('/', create);
 router.patch('/:key', update);
 router.put('/:key', overwrite);
@@ -33,14 +27,15 @@ router.delete('/:key', destroy);
 /**
  * POST /airport
  */
-function create(request: express.Request, response: express.Response, next: Function) {
-    var data = _getData(request);
-    var onCreate = function(error: any, obj: Airport.Type) {
-        if (error) {
-            console.error("WARN [Creating] -> %s", error.toString());
-            response.status(400).send(error.toString());
+function create(req: express.Request, res: express.Response, next: Function) {
+    var data = getDataFromRequest(req);
+    var onCreate = function(err: any, airport: Airport.Type) {
+        if (err) {
+            console.error("WARN [Creating] -> %s", err.toString());
+            res.status(400).send(err.toString());
         } else {
-            response.send("Airport created: " + obj.toString());
+            res.send("Airport created: " + airport.toString());
+            console.log("  New airport: %s", airport.toString());
             next();
         }
     };
@@ -48,20 +43,68 @@ function create(request: express.Request, response: express.Response, next: Func
 }
 
 
+class AirportList {
+    keys: string[];
+    total: number;
+
+    constructor() {
+        this.keys = [];
+    }
+
+    toString() {
+        return JSON.stringify(this);
+    }
+}
+
+/**
+ *  GET /airport
+ */
+function listAirports(req: express.Request, res: express.Response, next: Function) {
+    var airportList = new AirportList();
+    var finishResponse = function() {
+        console.log("  %s", airportList.toString())
+        res.json(airportList);
+        next();
+    };
+    var onCount = function(err: any, count: number) {
+        if (err) {
+            console.error("WARN [Counting airports] -> %s", err.toString());
+            res.status(400).send(err.toString());
+        } else {
+            airportList.total = count;
+            finishResponse();
+        }
+    };
+    var onFind = function(err: any, airports: Airport.Type[]) {
+        if (err) {
+            console.error("WARN [Listing airports] -> %s", err.toString());
+            res.status(400).send(err.toString());
+        } else {
+            for (var i in airports) {
+                airportList.keys.push(airports[i].key);
+            }
+            Airport.Model.count({}, onCount);
+        }
+    };
+    Airport.Model.find({}, onFind).limit(10);
+}
+
+
 /**
  * GET /airport/{key}
  */
-function findByKey(request: express.Request, response: express.Response, next: Function) {
-    var query = { key: request.params.key };
-    var onFind = function(error: any, obj: Airport.Type) {
-        if (error) {
-            console.error("WARN [Searching %s] -> %s", query, error.toString());
-            response.status(400).send(error.toString());
-        } else { 
-            response.json(obj);
+function findByKey(req: express.Request, res: express.Response, next: Function) {
+    var query = { key: req.params.key };
+    var onFind = function(err: any, airport: Airport.Type) {
+        if (err) {
+            console.error("WARN [Searching airport (%s)] -> %s", query, err.toString());
+            res.status(400).send(err.toString());
+        } else {
+            res.json(airport);
+            console.log("  Found: %s", airport.toString());
             next();
         }
-    }
+    };
     Airport.Model.findOne(query, onFind);
 }
 
@@ -69,16 +112,27 @@ function findByKey(request: express.Request, response: express.Response, next: F
 /**
  * PATCH /airport/{key}
  */
-function update(request: express.Request, response: express.Response, next: Function) {
-    var data = _getData(request);
-    data.key = request.params.key;
+function update(req: express.Request, res: express.Response, next: Function) {
+    var data = getDataFromRequest(req);
+    data.key = req.params.key;
     var query = { key: data.key };
-    var onFind = function(error: any, obj: Airport.Type) {
-        if (error) {
-            response.status(400).send(error.toString());
+    var onFind = function(err: any, airport: Airport.Type) {
+        if (err) {
+            console.warn("WARN [Searching airport (%s)] ->", query, err.toString());
+            res.status(400).send(err.toString());
         } else {
-            obj.mergeProperties(data);
-            obj.save(function(err: any, res: Airport.Type) { _onSave(err, res, response, next); });
+            var onSave = function(err: any, newAirport: Airport.Type) {
+                if (err) {
+                    console.error("WARN [Saving airport] -> %s", err.toString());
+                    res.status(400).send(err.toString());
+                } else {
+                    res.send("Saved: " + newAirport.toString());
+                    console.log("  Airport updated: %s", newAirport.toString());
+                    next();
+                }
+            };
+            airport.mergeProperties(data);
+            airport.save(onSave);
         }
     }
     Airport.Model.findOne(query, onFind);
@@ -89,16 +143,26 @@ function update(request: express.Request, response: express.Response, next: Func
 /**
  * PUT /airport/{key}
  */
-function overwrite(request: express.Request, response: express.Response, next: Function) {
-    var data = _getData(request);
-    data.key = request.params.key;
+function overwrite(req: express.Request, res: express.Response, next: Function) {
+    var data = getDataFromRequest(req);
+    data.key = req.params.key;
     var query = { key: data.key };
-    var onFind = function(error: any, obj: Airport.Type) {
-        if (error) {
-            response.status(400).send(error.toString());
+    var onFind = function(err: any, airport: Airport.Type) {
+        if (err) {
+            console.error("WARN [Searching airport (%s)]", query);
+            res.status(400).send(err.toString());
         } else {
-            obj.overwriteProperties(data);
-            obj.save(function(err: any, res: Airport.Type) { _onSave(err, res, response, next); });
+            var onSave = function(err: any, newAirport: Airport.Type) {
+                if (err) {
+                    console.error("WARN [Saving airport] -> %s", err.toString());
+                } else {
+                    res.send("Saved: " + newAirport.toString());
+                    console.log("  Airport updated: %s", newAirport.toString());
+                    next();
+                }
+            };
+            airport.overwriteProperties(data);
+            airport.save(onSave);
         }
     };
     Airport.Model.findOne(query, onFind);
@@ -108,13 +172,13 @@ function overwrite(request: express.Request, response: express.Response, next: F
 /**
  * DELETE /airport/{key}
  */
-function destroy(request: express.Request, response: express.Response, next: Function) {
-    var query = { key: request.params.key };
-    var onRemove = function(error: any, obj: Airport.Type) {
-        if (error) {
-            response.status(400).send(error.toString());
+function destroy(req: express.Request, res: express.Response, next: Function) {
+    var query = { key: req.params.key };
+    var onRemove = function(err: any, airport: Airport.Type) {
+        if (err) {
+            res.status(400).send(err.toString());
         } else {
-            response.json(obj);
+            res.json(airport);
             next();
         }
     };
@@ -122,23 +186,20 @@ function destroy(request: express.Request, response: express.Response, next: Fun
 }
 
 
-
 /* aux */
 
-function _onSave(error: any, obj: Airport.Type, response: express.Response, next: Function) {
-    if (error) {
-        console.error("WARN [Saving %s] -> %s", obj._id, error.toString());
-    } else {
-        response.send("Saved: " + obj.toString());
-        next();
-    }
+function logDataMiddleware(req: express.Request, res: express.Response, next: Function) {
+    console.log("  Airport Controller");
+    next();
 }
 
-function _getData(request: express.Request) : Airport.Properties {
-   return {
-        key: request.body.key,
-        name: request.body.name,
-        lat: request.body.lat,
-        lon: request.params.lon,
+function getDataFromRequest(req: express.Request) : Airport.Properties {
+    var data = {
+        key: req.body.key,
+        name: req.body.name,
+        lat: req.body.lat,
+        lon: req.params.lon,
     };
+    console.log("  data: %s", JSON.stringify(data));
+    return data;
 }

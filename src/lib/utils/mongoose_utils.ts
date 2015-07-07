@@ -1,12 +1,12 @@
 /**
  * Exports common functions for every mongoose schema
- * 
+ *
  *  - toStringOverride
  *  - overwriteProperties
  *  - mergeProperties
  *  - updateAndCreate
  */
- 
+
 export function toStringOverride() : String {
     return JSON.stringify(this);
 };
@@ -19,7 +19,7 @@ export function overwriteProperties(other: any) : void {
 
 export function mergeProperties (other: any) : void {
     for (var attrName in other) {
-        if (other[attrName] && !this[attrName]) {
+        if (other[attrName]) {
             this[attrName] = other[attrName];
         }
     }

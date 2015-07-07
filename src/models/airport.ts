@@ -1,8 +1,8 @@
 /*
- * Exports: 
- * 
+ * Exports:
+ *
  *  - type Airport.Properties
- *  - type Airport.Type 
+ *  - type Airport.Type
  *  - var Airport.Model
  */
 
@@ -40,10 +40,18 @@ var airportSchema = new mongoose.Schema({
     updated_at: {type: Date}
 });
 
-airportSchema.method('toString', mongooseUtils.toStringOverride);
+airportSchema.method('toString', minString);
 airportSchema.method('overwriteProperties', mongooseUtils.overwriteProperties);
 airportSchema.method('mergeProperties', mongooseUtils.mergeProperties);
 airportSchema.pre('save', mongooseUtils.updateAndCreate);
+
+function minString(): string {
+    var s = this.key;
+    if (this.name) {
+        s += " (" + this.name + ")";
+    }
+    return s;
+}
 
 
 export var Model = mongoose.model<Type>("Airport", airportSchema);
