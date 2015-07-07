@@ -7,15 +7,8 @@
 ///<reference path="../../typings/tsd.d.ts"/>
 import express = require('express');
 import mongoose = require('mongoose');
-
-import airportModule = require('../models/airport');
-import AirportProperties = airportModule.AirportProperties;
-import AirportInterface = airportModule.AirportInterface;
-import Airport = airportModule.AirportModel;
-import connectionModule = require('../models/connection');
-import ConnectionProperties = connectionModule.ConnectionProperties;
-import ConnectionInterface = connectionModule.ConnectionInterface;
-import Connection = connectionModule.ConnectionModel; 
+import Airport = require('../models/airport');
+import Connection = require('../models/connection');
 
 
 var logDataMiddleware = function(request: express.Request, response: express.Response, next: Function) {
@@ -38,12 +31,12 @@ router.post('/:key', create);
  */
 function create(request: express.Request, response: express.Response, next: Function) {
     var query = {key: request.params.key};
-    Airport.findOne(query, function(error: any, airport:AirportInterface) {
+    Airport.Model.findOne(query, function(error: any, airport: Airport.Type) {
         if (error) {
             response.status(400).send(error.toString());
         } else {
             var data = _getData(request);
-            Connection.create(data, function(error: any, connection: ConnectionInterface){
+            Connection.Model.create(data, function(error: any, connection: Connection.Type){
                 airport.connections.push(connection);
                 airport.save();
                 response.send("New connection from " + airport.key + " to " + connection.to);
@@ -54,7 +47,7 @@ function create(request: express.Request, response: express.Response, next: Func
 }
 
 
-function _getData(request: express.Request) : ConnectionProperties {
+function _getData(request: express.Request) : Connection.Properties {
    return {
         to: request.body.to,
         price: request.body.price

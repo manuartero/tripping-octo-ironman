@@ -10,11 +10,7 @@
 ///<reference path="../../typings/tsd.d.ts"/>
 import express = require('express');
 import mongoose = require('mongoose');
-
-import airportModule = require('../models/airport');
-import AirportProperties = airportModule.AirportProperties;
-import AirportInterface = airportModule.AirportInterface;
-import Airport = airportModule.AirportModel;
+import Airport = require('../models/airport');
 
 
 var logDataMiddleware = function(request: express.Request, response: express.Response, next: Function) {
@@ -39,7 +35,7 @@ router.delete('/:key', destroy);
  */
 function create(request: express.Request, response: express.Response, next: Function) {
     var data = _getData(request);
-    var onCreate = function(error: any, obj: AirportInterface) {
+    var onCreate = function(error: any, obj: Airport.Type) {
         if (error) {
             console.error("WARN [Creating] -> %s", error.toString());
             response.status(400).send(error.toString());
@@ -48,7 +44,7 @@ function create(request: express.Request, response: express.Response, next: Func
             next();
         }
     };
-    Airport.create(data, onCreate);
+    Airport.Model.create(data, onCreate);
 }
 
 
@@ -57,7 +53,7 @@ function create(request: express.Request, response: express.Response, next: Func
  */
 function findByKey(request: express.Request, response: express.Response, next: Function) {
     var query = { key: request.params.key };
-    var onFind = function(error: any, obj: AirportInterface) {
+    var onFind = function(error: any, obj: Airport.Type) {
         if (error) {
             console.error("WARN [Searching %s] -> %s", query, error.toString());
             response.status(400).send(error.toString());
@@ -66,7 +62,7 @@ function findByKey(request: express.Request, response: express.Response, next: F
             next();
         }
     }
-    Airport.findOne(query, onFind);
+    Airport.Model.findOne(query, onFind);
 }
 
 
@@ -77,15 +73,15 @@ function update(request: express.Request, response: express.Response, next: Func
     var data = _getData(request);
     data.key = request.params.key;
     var query = { key: data.key };
-    var onFind = function(error: any, obj: AirportInterface) {
+    var onFind = function(error: any, obj: Airport.Type) {
         if (error) {
             response.status(400).send(error.toString());
         } else {
             obj.mergeProperties(data);
-            obj.save(function(err: any, res: AirportInterface) { _onSave(err, res, response, next); });
+            obj.save(function(err: any, res: Airport.Type) { _onSave(err, res, response, next); });
         }
     }
-    Airport.findOne(query, onFind);
+    Airport.Model.findOne(query, onFind);
 }
 
 
@@ -97,15 +93,15 @@ function overwrite(request: express.Request, response: express.Response, next: F
     var data = _getData(request);
     data.key = request.params.key;
     var query = { key: data.key };
-    var onFind = function(error: any, obj: AirportInterface) {
+    var onFind = function(error: any, obj: Airport.Type) {
         if (error) {
             response.status(400).send(error.toString());
         } else {
             obj.overwriteProperties(data);
-            obj.save(function(err: any, res: AirportInterface) { _onSave(err, res, response, next); });
+            obj.save(function(err: any, res: Airport.Type) { _onSave(err, res, response, next); });
         }
     };
-    Airport.findOne(query, onFind);
+    Airport.Model.findOne(query, onFind);
 }
 
 
@@ -114,7 +110,7 @@ function overwrite(request: express.Request, response: express.Response, next: F
  */
 function destroy(request: express.Request, response: express.Response, next: Function) {
     var query = { key: request.params.key };
-    var onRemove = function(error: any, obj: AirportInterface) {
+    var onRemove = function(error: any, obj: Airport.Type) {
         if (error) {
             response.status(400).send(error.toString());
         } else {
@@ -122,14 +118,14 @@ function destroy(request: express.Request, response: express.Response, next: Fun
             next();
         }
     };
-    Airport.findOneAndRemove(query, onRemove);
+    Airport.Model.findOneAndRemove(query, onRemove);
 }
 
 
 
 /* aux */
 
-function _onSave(error: any, obj: AirportInterface, response: express.Response, next: Function) {
+function _onSave(error: any, obj: Airport.Type, response: express.Response, next: Function) {
     if (error) {
         console.error("WARN [Saving %s] -> %s", obj._id, error.toString());
     } else {
@@ -138,7 +134,7 @@ function _onSave(error: any, obj: AirportInterface, response: express.Response, 
     }
 }
 
-function _getData(request: express.Request) : AirportProperties {
+function _getData(request: express.Request) : Airport.Properties {
    return {
         key: request.body.key,
         name: request.body.name,

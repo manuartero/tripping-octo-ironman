@@ -5,6 +5,6 @@
         "target": "ES5",
         "outDir": "dist",
         "rootDir": "src",
-        "sourceMap": true
+        "sourceMap": false
     }
 }

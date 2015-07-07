@@ -1,18 +1,19 @@
 /*
- * Exports the type AirportProperties, the type AirportInterface and the var AirportModel
+ * Exports: 
+ * 
+ *  - type Airport.Properties
+ *  - type Airport.Type 
+ *  - var Airport.Model
  */
 
 import mongoose = require("mongoose");
 import mongooseUtils = require('../lib/utils/mongoose_utils');
-
-import connectionModule = require('./connection');
-import ConnectionProperties = connectionModule.ConnectionProperties;
-import ConnectionInterface = connectionModule.ConnectionInterface;
-import Connection = connectionModule.ConnectionModel;
+import Connection = require('./connection');
 
 var ObjectId = mongoose.Schema.Types.ObjectId;
 
-export interface AirportProperties {
+
+export interface Properties {
     key:  string;
     name?: string;
     lat?:  number;
@@ -20,12 +21,12 @@ export interface AirportProperties {
 }
 
 
-export interface AirportInterface extends AirportProperties, mongoose.Document {
+export interface Type extends Properties, mongoose.Document {
     created_at: Date;
     updated_at: Date;
-    connections: ConnectionInterface[];
-    overwriteProperties(other: AirportProperties) : void;
-    mergeProperties(other: AirportProperties) : void;
+    connections: Connection.Type[];
+    overwriteProperties(other: Properties) : void;
+    mergeProperties(other: Properties) : void;
 }
 
 
@@ -45,4 +46,4 @@ airportSchema.method('mergeProperties', mongooseUtils.mergeProperties);
 airportSchema.pre('save', mongooseUtils.updateAndCreate);
 
 
-export var AirportModel = mongoose.model<AirportInterface>("Airport", airportSchema);
+export var Model = mongoose.model<Type>("Airport", airportSchema);

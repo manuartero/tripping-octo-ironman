@@ -1,27 +1,29 @@
 /*
- * Exports the type ConnectionProperties, the type ConnectionInterface and the var ConnectionModel
+ * Exports:
+ *
+ *  - type Connection.Properties
+ *  - type Connection.Type
+ *  - var Connection.Model
  */
 
 import mongoose = require("mongoose");
 import mongooseUtils = require('../lib/utils/mongoose_utils');
 
-import airportModule = require('../models/airport');
-import AirportProperties = airportModule.AirportProperties;
-import AirportInterface = airportModule.AirportInterface;
-import Airport = airportModule.AirportModel;
-
 var ObjectId = mongoose.Schema.Types.ObjectId;
 var relationship = require("mongoose-relationship");
 
-export interface ConnectionProperties {
+
+export interface Properties {
     to: string;
     price?:  number;
 }
 
-export interface ConnectionInterface extends ConnectionProperties, mongoose.Document {
+
+export interface Type extends Properties, mongoose.Document {
     created_at: Date;
     updated_at: Date;
 }
+
 
 var connectionSchema = new mongoose.Schema({
     to: {type: String, required: true, uppercase: true, unique:true},
@@ -35,4 +37,4 @@ connectionSchema.pre('save', mongooseUtils.updateAndCreate);
 connectionSchema.plugin(relationship, {relationshipPathName:'airport'} );
 
 
-export var ConnectionModel = mongoose.model<ConnectionInterface>("Connection", connectionSchema);
+export var Model = mongoose.model<Type>("Connection", connectionSchema);
