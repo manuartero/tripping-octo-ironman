@@ -16,26 +16,31 @@ router.patch('/:from/:to', updateConnection);
 
 
 /**
- * POST /connect/{:key}
+ * POST {key:string, price?:number} /connect/{:key}
  */
 function createConnection(req: express.Request, res: express.Response, next: Function) {
-    var query = {key: req.params.key};
-    var onFind = function(err: any, airport: Airport.Type) {
+    var onFind = function(err: any, doc: Airport.Type) {
         if (err) {
-            console.error("WARN [Searching connection (%s)] -> %s", query, err.toString());
-            res.status(400).send(err.toString());
+            console.error("Searching airport (%s) -> %s", { key: req.params.key }, err.toString());
+            res.status(500).end();
         } else {
-            var data = getDataFromRequest(req);
-            var onCreate = function(err: any, connection: Connection.Type) {
-                airport.connections.push(connection);
-                airport.save();
-                res.send("New connection from " + airport.key + " to " + connection.to);
-                next();
-            };
-            Connection.Model.create(data, onCreate);
+            let connection: Connection.Type;
+            connection.key = req.body.key;
+            connection.price = req.body.price;
+            doc.addConnection(connection);
+            doc.save();
+            res.status(202).send("Creating new connection from " + doc.key + " to " + connection.key);
+            next();
+         }
+    };
+    var onSearch = function(err: any, docs: Airport.Type[]) {
+        if (!err) {
+            docs.length ? Airport.Model.findOne({ key: req.params.key }, onFind) : res.status(400).send("Key doesnt exists");
         }
     };
-    Airport.Model.findOne(query, onFind);
+    req.body.key ?
+        Airport.Model.find({ key: req.body.key }, onSearch) :
+        res.status(400).send("{key:string, price?:number}. key needed");
 }
 
 
@@ -46,6 +51,10 @@ function updateConnection(req: express.Request, res: express.Response, next: Fun
     var query = {key: req.params.from};
     var onFind = function(err: any, airport: Airport.Type) {
         // TODO
+        if (err) {
+            console.warn("Finding airport (%s) -> ", query, err.toString());
+            res.status(500).end();
+        }
     }
     Airport.Model.findOne(query, onFind);
 }
@@ -57,9 +66,3 @@ function logDataMiddleware (req: express.Request, res: express.Response, next: F
     console.log("  Connection controller");
     next();
 };
-
-function getDataFromRequest(req: express.Request) : Connection.Properties {
-    var data = {to: req.body.to, price: req.body.price};
-    console.log("  data: %s", JSON.stringify(data));
-    return data;
-}

@@ -25,21 +25,21 @@ router.delete('/:key', destroy);
 
 
 /**
- * POST /airport
+ * POST {key, name?, lat?, lon?} /airport
  */
 function create(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
     var onCreate = function(err: any, airport: Airport.Type) {
         if (err) {
             console.error("WARN [Creating] -> %s", err.toString());
-            res.status(400).send(err.toString());
+            res.status(500).send(err.toString());
         } else {
-            res.send("Airport created: " + airport.toString());
+            res.status(201).send("Airport created: " + airport.toString());
             console.log("  New airport: %s", airport.toString());
             next();
         }
     };
-    Airport.Model.create(data, onCreate);
+    data.key ? Airport.Model.create(data, onCreate) : res.status(400).send("POST {key:string}. key required");
 }
 
 
@@ -110,38 +110,40 @@ function findByKey(req: express.Request, res: express.Response, next: Function) 
 
 
 /**
- * PATCH /airport/{key}
+ * PATCH {name?, lat? lon?} /airport/{key}
  */
 function update(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
-    data.key = req.params.key;
-    var query = { key: data.key };
+    var query = { key: req.params.key };
     var onFind = function(err: any, airport: Airport.Type) {
         if (err) {
             console.warn("WARN [Searching airport (%s)] ->", query, err.toString());
-            res.status(400).send(err.toString());
+            res.status(500).send(err.toString());
         } else {
             var onSave = function(err: any, newAirport: Airport.Type) {
                 if (err) {
                     console.error("WARN [Saving airport] -> %s", err.toString());
-                    res.status(400).send(err.toString());
+                    res.status(500).send(err.toString());
                 } else {
-                    res.send("Saved: " + newAirport.toString());
+                    res.status(200).send("Saved: " + newAirport.toString());
                     console.log("  Airport updated: %s", newAirport.toString());
                     next();
                 }
             };
+            data.key = req.params.key;
             airport.mergeProperties(data);
             airport.save(onSave);
         }
     }
-    Airport.Model.findOne(query, onFind);
+    Object.keys(data).length > 0 ?
+        Airport.Model.findOne(query, onFind) :
+        res.status(400).send("{name:string, lat:number, lon:number}. At least one required");
 }
 
 
 
 /**
- * PUT /airport/{key}
+ * PUT {name?, lat? lon?} /airport/{key}
  */
 function overwrite(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
@@ -193,7 +195,7 @@ function logDataMiddleware(req: express.Request, res: express.Response, next: Fu
     next();
 }
 
-function getDataFromRequest(req: express.Request) : Airport.Properties {
+function getDataFromRequest(req: express.Request) {
     var data = {
         key: req.body.key,
         name: req.body.name,
