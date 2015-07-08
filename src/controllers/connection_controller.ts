@@ -23,19 +23,24 @@ function createConnection(req: express.Request, res: express.Response, next: Fun
         if (err) {
             console.error("Searching airport (%s) -> %s", { key: req.params.key }, err.toString());
             res.status(500).end();
-        } else {
-            let connection: Connection.Type;
-            connection.key = req.body.key;
-            connection.price = req.body.price;
-            doc.addConnection(connection);
-            doc.save();
-            res.status(202).send("Creating new connection from " + doc.key + " to " + connection.key);
+        } else if (doc) {
+            let connection: any; // XXX
+            connection = {key: req.body.key, price: req.body.price};
+            var added = doc.addConnection(connection);
+            if (added) {
+                doc.save();
+                res.status(202).send("Creating new connection from " + doc.key + " to " + connection.key);
+            } else {
+                res.status(400).send("Connection already exists. Refused");
+            }
             next();
-         }
+        } else {
+            res.status(400).send("Key (from) doesnt exists");
+        }
     };
     var onSearch = function(err: any, docs: Airport.Type[]) {
         if (!err) {
-            docs.length ? Airport.Model.findOne({ key: req.params.key }, onFind) : res.status(400).send("Key doesnt exists");
+            docs.length > 0 ? Airport.Model.findOne({ key: req.params.key }, onFind) : res.status(400).send("Key (to) doesnt exists");
         }
     };
     req.body.key ?
@@ -54,6 +59,9 @@ function updateConnection(req: express.Request, res: express.Response, next: Fun
         if (err) {
             console.warn("Finding airport (%s) -> ", query, err.toString());
             res.status(500).end();
+        } else {
+            res.status(501);
+            next();
         }
     }
     Airport.Model.findOne(query, onFind);

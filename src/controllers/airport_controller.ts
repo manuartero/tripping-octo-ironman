@@ -48,28 +48,25 @@ function create(req: express.Request, res: express.Response, next: Function) {
  *  GET /airport
  */
 function listAirports(req: express.Request, res: express.Response, next: Function) {
-    var airportList = new AirportList();
-    var finishResponse = function() {
-        console.log("  %s", airportList.toString())
-        res.json(airportList);
-        next();
-    };
+    var airportList = new AirportHelper.AirportList();
     var onCount = function(err: any, count: number) {
         if (err) {
             console.error("WARN [Counting airports] -> %s", err.toString());
             res.status(400).send(err.toString());
         } else {
             airportList.total = count;
-            finishResponse();
+            console.log("  %s", airportList.toString())
+            res.json(airportList);
+            next();
         }
     };
-    var onFind = function(err: any, airports: Airport.Type[]) {
+    var onFind = function(err: any, docs: Airport.Type[]) {
         if (err) {
             console.error("WARN [Listing airports] -> %s", err.toString());
             res.status(400).send(err.toString());
         } else {
-            for (var i in airports) {
-                airportList.keys.push(airports[i].key);
+            for (var i in docs) {
+                airportList.keys.push(docs[i].key);
             }
             Airport.Model.count({}, onCount);
         }

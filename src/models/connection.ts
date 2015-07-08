@@ -17,5 +17,4 @@ export interface Type extends mongoose.Document {
 export var schema = new mongoose.Schema({
     key: {type: String, required: true, uppercase: true},
     price: {type: Number},
-});
-
+}, {_id: false});
