@@ -3,9 +3,10 @@ import express = require('express');
 import mongoose = require('mongoose');
 import bodyParser = require('body-parser');
 
-/* airport resource */
+/* controllers */
 import AirportController = require('./controllers/airport_controller');
 import ConnectionController = require('./controllers/connection_controller');
+import SeedController = require('./controllers/seed_controller');
 
 
 /* DB */
@@ -19,6 +20,7 @@ app.use(bodyParser.json());
 app.use(logRequestMiddleware);
 app.use('/airport', AirportController.router);
 app.use('/connect', ConnectionController.router);
+app.use('/seed', SeedController.router);
 app.use(notFoundMiddleware);
 
 
