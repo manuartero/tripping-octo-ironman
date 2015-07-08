@@ -11,7 +11,6 @@ import Connection = require('./connection');
 
 
 export interface Type extends mongoose.Document {
-
     key:  string;
     name?: string;
     lat?:  number;
@@ -48,6 +47,7 @@ schema.method('addConnections', addConnections);
 schema.method('addConnection', addConnection);
 schema.method('removeConnections', removeConnections);
 schema.method('removeConnection', removeConnection);
+schema.method('_search', _search);
 schema.pre('save', mongooseUtils.updateAndCreate);
 
 
@@ -77,7 +77,7 @@ function addConnections(cs: Connection.Type[]): number {
  */
 function addConnection(c: Connection.Type): boolean {
     if (!this.connections) { this.connections = []; }
-    var connectionIndex = _search(c.key);
+    var connectionIndex = this._search(c.key);
     if (connectionIndex < 0) {
         this.connections.push(c);
         return true;
