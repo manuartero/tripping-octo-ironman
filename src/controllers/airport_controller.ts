@@ -12,6 +12,7 @@
 import express = require('express');
 import mongoose = require('mongoose');
 import Airport = require('../models/airport');
+import AirportHelper = require('./helpers/airport_helper');
 
 
 export var router = express.Router();
@@ -42,19 +43,6 @@ function create(req: express.Request, res: express.Response, next: Function) {
     data.key ? Airport.Model.create(data, onCreate) : res.status(400).send("POST {key:string}. key required");
 }
 
-
-class AirportList {
-    keys: string[];
-    total: number;
-
-    constructor() {
-        this.keys = [];
-    }
-
-    toString() {
-        return JSON.stringify(this);
-    }
-}
 
 /**
  *  GET /airport
