@@ -12,7 +12,7 @@
       "commit": "d73cbcb405788eb85cc4a4167b963ef4dd630cdc"
     },
     "node/node.d.ts": {
-      "commit": "d73cbcb405788eb85cc4a4167b963ef4dd630cdc"
+      "commit": "f0aa5507070dc74859b636bd2dac37f3e8cab8d1"
     },
     "mime/mime.d.ts": {
       "commit": "d73cbcb405788eb85cc4a4167b963ef4dd630cdc"
@@ -22,6 +22,15 @@
     },
     "body-parser/body-parser.d.ts": {
       "commit": "1632606f82cfbaf89d4b96b8dccacfaf2a6ae2f3"
+    },
+    "mocha/mocha.d.ts": {
+      "commit": "be03157bace6e6465e63f13073d7b68e8ea1303c"
+    },
+    "superagent/superagent.d.ts": {
+      "commit": "be03157bace6e6465e63f13073d7b68e8ea1303c"
+    },
+    "supertest/supertest.d.ts": {
+      "commit": "be03157bace6e6465e63f13073d7b68e8ea1303c"
     }
   }
 }
