@@ -1,126 +1,118 @@
 /*
  * Exports:
  *
- *  - type  Airport.Type
- *  - var   Airport.Model
+ *  - type    airportModule.Airport                 Logic model
+ *  - class   airportModule.AirportImplementation   Usefull just in airport_schema.ts
  */
 
-import mongoose = require("mongoose");
-import mongooseUtils = require('../lib/utils/mongoose_utils');
-import Connection = require('./connection');
+import connectionModule = require('./connection');
+import Connection = connectionModule.Connection;
 
-
-export interface Type extends mongoose.Document {
+export interface Airport {
     key:  string;
     name?: string;
     lat?:  number;
     lon?: number;
-    connections?: Connection.Type[];
+    connections?: Connection[];
+    created_at?: Date;
+    updated_at?: Date;
+
+    overwriteProperties?(other: any): void;
+    mergeProperties?(other: any): void;
+    getConnection?(key: string): Connection;
+    addConnections?(cs: Connection[]) : number
+    addConnection?(c: Connection): boolean;
+    removeConnections?(keys: string[]): number;
+    removeConnection?(key: string): Connection;
+}
+
+
+export class AirportImplementation implements Airport {
+
+    key: string;
+    name: string;
+    lat: number;
+    lon: number;
+    connections: Connection[];
     created_at: Date;
     updated_at: Date;
 
-    overwriteProperties(other: any): void;
-    mergeProperties(other: any): void;
-    getConnection(key: string): Connection.Type;
-    addConnections(cs: Connection.Type[]) : number
-    addConnection(c: Connection.Type): boolean;
-    removeConnections(keys: string[]): number;
-    removeConnection(key: string): Connection.Type;
-}
-
-
-var schema = new mongoose.Schema({
-    key:  {type: String, required: true, uppercase:true, unique:true},
-    name: {type: String},
-    lat:  {type: Number, default: null},
-    lon:  {type:Number,  default: null},
-    connections:[ Connection.schema ],
-    created_at: {type: Date},
-    updated_at: {type: Date}
-});
-
-schema.method('toString', _minString);
-schema.method('overwriteProperties', mongooseUtils.overwriteProperties);
-schema.method('mergeProperties', mongooseUtils.mergeProperties);
-schema.method('getConnection', getConnection);
-schema.method('addConnections', addConnections);
-schema.method('addConnection', addConnection);
-schema.method('removeConnections', removeConnections);
-schema.method('removeConnection', removeConnection);
-schema.method('_search', _search);
-schema.pre('save', mongooseUtils.updateAndCreate);
-
-
-/**
- * Return the found item or null
- */
-function getConnection(key: string): Connection.Type {
-    var filteredConnections = this.connections.filter(function(item) {
-        return item.key == key;
-    });
-    return (filteredConnections.length == 0 ? null : filteredConnections[0]);
-}
-
-/**
- * Return number of added items
- */
-function addConnections(cs: Connection.Type[]): number {
-    var count = 0;
-    for (var c of cs) {
-        if (this.addConnection(c)) { count++; }
+    constructor(key: string) {
+        this.key = key;
     }
-    return count;
-}
 
-/**
- * Return success flag
- */
-function addConnection(c: Connection.Type): boolean {
-    if (!this.connections) { this.connections = []; }
-    var connectionIndex = this._search(c.key);
-    if (connectionIndex < 0) {
-        this.connections.push(c);
-        return true;
+    /**
+     * Return the found item or null
+     */
+    getConnection(key: string): Connection {
+        var filteredConnections = this.connections.filter(function(item) {
+            return item.key == key;
+        });
+        return (filteredConnections.length == 0 ? null : filteredConnections[0]);
     }
-    return false;
-}
 
-/**
- * Return the number of removed items
- */
-function removeConnections(keys: string[]): number {
-    var count = 0;
-    for (var key of keys) {
-        if (this.removeConnection(key)) { count++; }
+    /**
+     * Return number of added items
+     */
+    addConnections(cs: Connection[]): number {
+        var count = 0;
+        for (var c of cs) {
+            if (this.addConnection(c)) { count++; }
+        }
+        return count;
     }
-    return count;
-}
 
-/**
- * Return the removed item or null
- */
-function removeConnection(key: string): Connection.Type {
-    var connectionIndex = _search(key);
-    var removedConnection = null;
-    if (connectionIndex >= 0) {
-        removedConnection = this.connections.splice(connectionIndex, 1)[0];
+    /**
+     * Return success flag
+     */
+    addConnection(c: Connection): boolean {
+        if (!this.connections) { this.connections = []; }
+        var connectionIndex = this._search(c.key);
+        if (connectionIndex < 0) {
+            this.connections.push(c);
+            return true;
+        }
+        return false;
     }
-    return removedConnection;
-}
 
-// FIXME: already exists?
-function _search(key: string): number {
-    for (var c in this.connections) {
-        if (this.connections[c].key == key) { return c; }
+    /**
+     * Return the number of removed items
+     */
+    removeConnections(keys: string[]): number {
+        var count = 0;
+        for (var key of keys) {
+            if (this.removeConnection(key)) { count++; }
+        }
+        return count;
     }
-    return -1;
+
+    /**
+     * Return the removed item or null
+     */
+    removeConnection(key: string): Connection {
+        var connectionIndex = this._search(key);
+        var removedConnection = null;
+        if (connectionIndex >= 0) {
+            removedConnection = this.connections.splice(connectionIndex, 1)[0];
+        }
+        return removedConnection;
+    }
+
+    _search(key: string): number {
+        for (var c in this.connections) {
+            if (this.connections[c].key == key) { return c; }
+        }
+        return -1;
+    }
+
+    toString(): string {
+        var o = {
+            key: this.key,
+            name: this.name,
+            lat: this.lat,
+            lon: this.lon,
+            connections: this.connections
+        };
+        return JSON.stringify(o);
+    }
 }
-
-function _minString(): string {
-    var s = this.key;
-    if (this.name) { s += " (" + this.name + ")"; }
-    return s;
-}
-
-
-export var Model = mongoose.model<Type>("Airport", schema);

@@ -31,6 +31,9 @@
     },
     "supertest/supertest.d.ts": {
       "commit": "be03157bace6e6465e63f13073d7b68e8ea1303c"
+    },
+    "chai/chai.d.ts": {
+      "commit": "178dee76b23618d84237e9601cf21772252883cc"
     }
   }
 }

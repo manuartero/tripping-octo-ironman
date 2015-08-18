@@ -1,4 +1,4 @@
-/* Exports the airportController
+/* Exports airportController.router
  *
  * CRUD under /airport
  *  - POST               /airport
@@ -11,8 +11,12 @@
 ///<reference path="../../typings/tsd.d.ts"/>
 import express = require('express');
 import mongoose = require('mongoose');
-import Airport = require('../models/airport');
-import AirportHelper = require('./helpers/airport_helper');
+import airportModule = require('../models/airport');
+import airportHelper = require('./helpers/airport_helper');
+import airportSchema = require('../models/mongo/airport_schema');
+import Airport = airportModule.Airport;
+import AirportList = airportHelper.AirportList;
+import AirportDocument = airportSchema.AirportDocument;
 
 
 export var router = express.Router();
@@ -27,149 +31,224 @@ router.delete('/:key', destroy);
 
 /**
  * POST {key, name?, lat?, lon?} /airport
+ *
+ * Responses
+ *
+ *  - 201 (OK Created)   {airport}
+ *  - 400 (Bad Request)  {cause: string}
+ *  - 500 (Server Error) {}
  */
 function create(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
-    var onCreate = function(err: any, airport: Airport.Type) {
+    var onCreate = (err: any, a: AirportDocument) => {
         if (err) {
-            console.error("WARN [Creating] -> %s", err.toString());
-            res.status(500).send(err.toString());
+            console.error("Creating airport -> %s", err.toString());
+            res.status(500).json(null);
         } else {
-            res.status(201).send("Airport created: " + airport.toString());
-            console.log("  New airport: %s", airport.toString());
-            next();
+            console.info("  New airport: %s", a.toString());
+            res.status(201).json(a.toString());
         }
     };
-    data.key ? Airport.Model.create(data, onCreate) : res.status(400).send("POST {key:string}. key required");
+    var onFind = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("Finding airport -> %s", err.toString());
+            res.status(500).json(null);
+        } else if (a) {
+            console.info("Duplicated airport -> %s", a.key);
+            res.status(400).json({ cause: "Already exists" });
+        } else {
+            airportSchema.DB.create(data, onCreate);
+        }
+    };
+    data.key ?
+        airportSchema.DB.find({key: data.key}, onFind) :
+        res.status(400).json({ cause: "key expected" });
 }
 
 
 /**
  *  GET /airport
+ *
+ * Responses
+ *
+ *  - 200 (OK Finish)    {list}
+ *  - 500 (Server error) {}
  */
 function listAirports(req: express.Request, res: express.Response, next: Function) {
-    var airportList = new AirportHelper.AirportList();
-    var onCount = function(err: any, count: number) {
+    var l = new AirportList(),
+    onCount = (err: any, count: number) => {
         if (err) {
-            console.error("WARN [Counting airports] -> %s", err.toString());
-            res.status(400).send(err.toString());
+            console.error("Counting airports -> %s", err.toString());
+            res.status(500).json(null);
         } else {
-            airportList.total = count;
-            console.log("  %s", airportList.toString())
-            res.json(airportList);
-            next();
+            l.total = count;
+            console.info("  Airports list: %s", l.toString())
+            res.status(200).json(l);
         }
-    };
-    var onFind = function(err: any, docs: Airport.Type[]) {
+    },
+    onFind = (err: any, as: AirportDocument[]) => {
         if (err) {
-            console.error("WARN [Listing airports] -> %s", err.toString());
-            res.status(400).send(err.toString());
+            console.error("Listing airports -> %s", err.toString());
+            res.status(500).json(null);
         } else {
-            for (var i in docs) {
-                airportList.keys.push(docs[i].key);
+            for (var a of as) {
+                l.keys.push(a.key);
             }
-            Airport.Model.count({}, onCount);
+            airportSchema.DB.count({}, onCount);
         }
     };
-    Airport.Model.find({}, onFind).limit(10);
+    airportSchema.DB.find({}, onFind).limit(10);
 }
 
 
 /**
  * GET /airport/{key}
+ *
+ * Responses
+ *
+ *  - 200 (OK Finish)    {a}
+ *  - 204 (OK Empty)     {}
+ *  - 500 (Server Error) {}
  */
 function findByKey(req: express.Request, res: express.Response, next: Function) {
-    var query = { key: req.params.key };
-    var onFind = function(err: any, airport: Airport.Type) {
-        if (err) {
-            console.error("WARN [Searching airport (%s)] -> %s", query, err.toString());
-            res.status(400).send(err.toString());
+    var query = { key: req.params.key },
+
+    responseFor = (a: AirportDocument) => {
+        if (a) {
+            console.info("  Found: %s", a.toString());
+            res.status(200).json(a);
         } else {
-            res.json(airport);
-            console.log("  Found: %s", airport.toString());
-            next();
+            console.info("  No airport found");
+            res.status(204).json(null);
+        }
+    },
+
+    onFind = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("  Searching airport (%s) -> %s", query, err.toString());
+            res.status(500).json(null);
+        } else {
+            responseFor(a);
         }
     };
-    Airport.Model.findOne(query, onFind);
+
+    airportSchema.DB.findOne(query, onFind);
 }
 
 
 /**
- * PATCH {name?, lat? lon?} /airport/{key}
+ * PATCH  {name?, lat? lon?}  /airport/{key}
+ *
+ * Responses
+ *
+ *  - 202 (Ok Doing)     {a}
+ *  - 400 (Bad Request)  {cause: string}
+ *  - 500 (Server Error) {}
  */
 function update(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
-    var query = { key: req.params.key };
-    var onFind = function(err: any, airport: Airport.Type) {
-        if (err) {
-            console.warn("WARN [Searching airport (%s)] ->", query, err.toString());
-            res.status(500).send(err.toString());
+    data.key = req.params.key;
+    var query = { key: req.params.key },
+
+    responseFor = (a: AirportDocument) => {
+        if (a) {
+            a.mergeProperties(data);
+            a.save();
+            console.info("  Saving airport: %s", a.toString());
+            res.status(202).json(a);
         } else {
-            var onSave = function(err: any, newAirport: Airport.Type) {
-                if (err) {
-                    console.error("WARN [Saving airport] -> %s", err.toString());
-                    res.status(500).send(err.toString());
-                } else {
-                    res.status(200).send("Saved: " + newAirport.toString());
-                    console.log("  Airport updated: %s", newAirport.toString());
-                    next();
-                }
-            };
-            data.key = req.params.key;
-            airport.mergeProperties(data);
-            airport.save(onSave);
+            console.info("  No airport found");
+            res.status(400).json({ cause: "No airport found" });
         }
-    }
+    },
+
+    onFind = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("  Searching airport (%s) -> %s", query, err.toString());
+            res.status(500).json(null);
+        } else {
+            responseFor(a);
+        }
+    };
+
     Object.keys(data).length > 0 ?
-        Airport.Model.findOne(query, onFind) :
-        res.status(400).send("{name:string, lat:number, lon:number}. At least one required");
+        airportSchema.DB.findOne(query, onFind) :
+        res.status(400).json({ cause: "(name | lat | lon) expected" });
 }
 
 
-
 /**
- * PUT {name?, lat? lon?} /airport/{key}
+ * PUT  {name?, lat? lon?}  /airport/{key}
+ *
+ * Responses
+ *
+ * - 202 (OK Doing)     {a}
+ * - 400 (Bad Request)  {cause: string}
+ * - 500 (Server Error) {}
+ * -
  */
 function overwrite(req: express.Request, res: express.Response, next: Function) {
     var data = getDataFromRequest(req);
-    data.key = req.params.key;
-    var query = { key: data.key };
-    var onFind = function(err: any, airport: Airport.Type) {
-        if (err) {
-            console.error("WARN [Searching airport (%s)]", query);
-            res.status(400).send(err.toString());
+    var query = { key: req.params.key },
+
+    responseFor = (a: AirportDocument) => {
+        if (a) {
+            a.overwriteProperties(data);
+            a.save();
+            console.info("  Saving airport: %s", a.toString());
+            res.status(202).json(a);
         } else {
-            var onSave = function(err: any, newAirport: Airport.Type) {
-                if (err) {
-                    console.error("WARN [Saving airport] -> %s", err.toString());
-                } else {
-                    res.send("Saved: " + newAirport.toString());
-                    console.log("  Airport updated: %s", newAirport.toString());
-                    next();
-                }
-            };
-            airport.overwriteProperties(data);
-            airport.save(onSave);
+            console.info("  No airport found");
+            res.status(400).json({ cause: "No airport found" });
+        }
+    },
+
+    onFind = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("  Searching airport (%s) -> ]", query);
+            res.status(500).json(null);
+        } else {
+            responseFor(a);
         }
     };
-    Airport.Model.findOne(query, onFind);
+
+    Object.keys(data).length > 0 ?
+        airportSchema.DB.findOne(query, onFind) :
+        res.status(400).json({ cause: "(name | lat | lon) expected" });
 }
 
 
 /**
- * DELETE /airport/{key}
+ * DELETE  /airport/{key}
+ *
+ * Responses
+ *
+ *  - 202 (OK Doing)      {a}
+ *  - 400 (Bad Request)   {cause: "No airport found"}
+ *  - 500 (Server Error)  {}
  */
 function destroy(req: express.Request, res: express.Response, next: Function) {
-    var query = { key: req.params.key };
-    var onRemove = function(err: any, airport: Airport.Type) {
-        if (err) {
-            res.status(400).send(err.toString());
+    var query = { key: req.params.key },
+
+    responseFor = (a: AirportDocument) => {
+        if (a) {
+            console.info("  Removing airport: %s", a.toString());
+            res.status(202).json(a);
         } else {
-            res.json(airport);
-            next();
+            console.info("  No airport found");
+            res.status(400).json({ cause: "No airport found" });
+        }
+    },
+
+    onRemove = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("  Removing airport (%s) -> %s", query, err.toString());
+            res.status(500).json(null);
+        } else {
+            responseFor(a);
         }
     };
-    Airport.Model.findOneAndRemove(query, onRemove);
+    airportSchema.DB.findOneAndRemove(query, onRemove);
 }
 
 
@@ -180,7 +259,7 @@ function logDataMiddleware(req: express.Request, res: express.Response, next: Fu
     next();
 }
 
-function getDataFromRequest(req: express.Request) {
+function getDataFromRequest(req: express.Request) : Airport {
     var data = {
         key: req.body.key,
         name: req.body.name,

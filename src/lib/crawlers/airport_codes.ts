@@ -18,7 +18,13 @@ export class Crawler implements Interfaces.Crawler {
 
     parse(page: string): CrawlerResponse {
         // TODO
-        return null;
+        return {
+            name: "example",
+            country: "example",
+            lat: 0,
+            lon: 0,
+            connections: ["TEST"]
+        }
     }
 
 }

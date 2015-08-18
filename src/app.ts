@@ -2,15 +2,10 @@
 import express = require('express');
 import mongoose = require('mongoose');
 import bodyParser = require('body-parser');
-
-/* controllers */
 import AirportController = require('./controllers/airport_controller');
 import ConnectionController = require('./controllers/connection_controller');
 import SeedController = require('./controllers/seed_controller');
-
-
-/* DB */
-mongoose.connect('mongodb://localhost/tripping-octo-ironman');
+import config = require('./config');
 
 
 /* APP */
@@ -21,7 +16,16 @@ app.use(logRequestMiddleware);
 app.use('/airport', AirportController.router);
 app.use('/connect', ConnectionController.router);
 app.use('/seed', SeedController.router);
-app.use(notFoundMiddleware);
+
+
+/* DB */
+var env = process.env.NODE_ENV || 'dev';
+var dbName = config.envs[env].db;
+mongoose.connect(dbName, function(err: any) {
+    err ?
+        console.error("Connecting to %s => %s", dbName, err.toString()) :
+        console.info("Connected to %s", dbName);
+});
 
 
 /* SERVER */
@@ -30,16 +34,12 @@ var server = app.listen(3000, function() {
 });
 
 
-/* middlewares */
-
-// FIXME NOT WORKING AS EXPECTED
-function notFoundMiddleware(req: express.Request, res: express.Response, next: Function) {
-    res.status(404).end('Cannot ' + req.method + ' at ' + req.path);
-}
+/* aux */
 
 function logRequestMiddleware(req: express.Request, res: express.Response, next: Function) {
     console.info("%s at: %s", req.method, req.path);
     console.info("  Headers: %s", JSON.stringify(req.headers));
     console.info("  Body: %s", JSON.stringify(req.body));
+    res.type('json');
     next();
 };

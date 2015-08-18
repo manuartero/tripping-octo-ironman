@@ -1,13 +1,17 @@
-/* Exports the connectionController
+/* Exports connectionController.router
  *
  * CRUD under /connect
- *  - POST /connect/{:key}
+ *  - POST   /connect/{:key}
+ *  - PATCH  /coonect/{:from}/{:to}
  */
 
 ///<reference path="../../typings/tsd.d.ts"/>
 import express = require('express');
-import Airport = require('../models/airport');
-import Connection = require('../models/connection');
+import airportModule = require('../models/airport');
+import connectionModule = require('../models/connection');
+import airportSchema = require('../models/mongo/airport_schema');
+import Airport = airportModule.Airport;
+import AirportDocument = airportSchema.AirportDocument;
 
 export var router = express.Router();
 router.use(logDataMiddleware)
@@ -17,54 +21,82 @@ router.patch('/:from/:to', updateConnection);
 
 /**
  * POST {key:string, price?:number} /connect/{:key}
+ *
+ * Responses
+ *  - 202 (OK Doing)     {a}
+ *  - 400 (Bad Request)  {cause: string}
+ *  - 500 (Server Error) {}
  */
 function createConnection(req: express.Request, res: express.Response, next: Function) {
-    var onFind = function(err: any, doc: Airport.Type) {
-        if (err) {
-            console.error("Searching airport (%s) -> %s", { key: req.params.key }, err.toString());
-            res.status(500).end();
-        } else if (doc) {
-            let connection: any; // XXX
-            connection = {key: req.body.key, price: req.body.price};
-            var added = doc.addConnection(connection);
+
+    var responseFor = (a: AirportDocument) => {
+        if (a) {
+            var connection = { key: req.body.key, price: req.body.price };
+            var added = a.addConnection(connection);
             if (added) {
-                doc.save();
-                res.status(202).send("Creating new connection from " + doc.key + " to " + connection.key);
+                a.save();
+                console.info("  Creating new connection: %s", a);
+                res.status(202).json(a);
             } else {
-                res.status(400).send("Connection already exists. Refused");
+                console.info("  Connection already exists");
+                res.status(400).json({ cause: "Connection already exists" });
             }
-            next();
         } else {
-            res.status(400).send("Key (from) doesnt exists");
+            console.info("  Key (from) doesnt exists");
+            res.status(400).json({ cause: "Key (from) doesnt exists" });
         }
-    };
-    var onSearch = function(err: any, docs: Airport.Type[]) {
+    },
+
+    onFind = (err: any, a: AirportDocument) => {
+        if (err) {
+            console.error("  Searching airport (%s) -> %s", { key: req.params.key }, err.toString());
+            res.status(500).json(null);
+        } else {
+            responseFor(a);
+        }
+    },
+
+    onSearch = (err: any, docs: AirportDocument[]) => {
         if (!err) {
-            docs.length > 0 ? Airport.Model.findOne({ key: req.params.key }, onFind) : res.status(400).send("Key (to) doesnt exists");
+            docs.length > 0 ?
+                airportSchema.DB.findOne({ key: req.params.key }, onFind) :
+                res.status(400).send("Key (to) doesnt exists");
         }
     };
-    req.body.key ?
-        Airport.Model.find({ key: req.body.key }, onSearch) :
-        res.status(400).send("{key:string, price?:number}. key needed");
+
+    if (req.body.key === req.params.key) {
+        console.info("  (to) and (from) are not the same");
+        res.status(400).json({ cause: "(to) and (from) are not the same" });
+    } else {
+        req.body.key ?
+            airportSchema.DB.find({ key: req.body.key }, onSearch) :
+            res.status(400).json({ cause: "key needed" });
+    }
 }
 
 
 /**
  * PATCH /connect/{:from}/{:to}
+ *
+ * Responses
+ *
+ *  - 500 (Server Error)    {err}
+ *  - 501 (Not Implemented) {}
  */
-function updateConnection(req: express.Request, res: express.Response, next: Function) {
-    var query = {key: req.params.from};
-    var onFind = function(err: any, airport: Airport.Type) {
-        // TODO
+function updateConnection(req: express.Request, res: express.Response) {
+    var query = {key: req.params.from},
+
+    onFind = (err: any, a: AirportDocument) => {
         if (err) {
-            console.warn("Finding airport (%s) -> ", query, err.toString());
-            res.status(500).end();
+            console.error("  Finding airport (%s) -> ", query, err.toString());
+            res.status(500).json(null);
         } else {
-            res.status(501);
-            next();
+            // TODO
+            res.status(501).json(null);
         }
     }
-    Airport.Model.findOne(query, onFind);
+
+    airportSchema.DB.findOne(query, onFind);
 }
 
 
